@@ -7,6 +7,33 @@ This file provides context and instructions for AI coding agents (Copilot, Curso
 This is a Terraform module for [STACKIT](https://www.stackit.de/en/), the cloud platform by Schwarz Group.
 It is part of the [terraform-stackit-modules](https://github.com/terraform-stackit-modules) organization, which aims to provide community-maintained, production-grade Terraform modules for STACKIT.
 
+### This module: observability
+
+Composite module for STACKIT **Observability** (managed Prometheus/Grafana/Loki/Tempo).
+
+**Sub-modules**
+- `modules/instance` — `stackit_observability_instance` (toggled by `create_instance` via `count`).
+- `modules/credential` — `stackit_observability_credential` (`for_each` over `credentials`).
+- `modules/scrapeconfig` — `stackit_observability_scrapeconfig` (`for_each` over `scrape_configs`).
+- `modules/alertgroup` — `stackit_observability_alertgroup` (`for_each` over `alert_groups`).
+
+**Key inputs** — `project_id` (req), `create_instance`/`instance_id`, `name`, `plan_name`, `acl`,
+per-signal retentions (`logs_/traces_/metrics_retention_days`, `metrics_retention_days_5m/1h_downsampling`),
+`credentials` (map: `{description?, rotate_when_changed?}`),
+`scrape_configs` (map: `{name, metrics_path, targets[{urls, labels?}], scheme?, scrape_interval?, scrape_timeout?, sample_limit?}`),
+`alert_groups` (map: `{name, interval?, rules[{expression, alert?, record?, for?, labels?, annotations?}]}`).
+
+**Outputs** — `instance_id`, `grafana_url`, `metrics_push_url`, `logs_push_url`, `dashboard_url`,
+`credential_usernames`, `credential_passwords` (sensitive), `scrape_config_names`, `alert_group_names`.
+
+**Gotchas**
+- credential/scrapeconfig/alertgroup take project_id + instance_id, NO region argument (do not add
+  one — like secretsmanager/dns).
+- `targets` (scrapeconfig) and `rules` (alertgroup) are attribute LISTS passed straight through;
+  child maps keyed by a stable id, instance_id (known-after-apply) never a for_each key.
+- `alert_groups[*].interval` >= 60s. Downsampling retentions ordered 1h ≤ 5m ≤ general.
+- credential password output is `sensitive = true`.
+
 ## Repository structure
 
 ```
